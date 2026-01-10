@@ -1124,14 +1124,20 @@ st.markdown("</div>", unsafe_allow_html=True)
 # Big Picture Market Pulse Dashboard (Manual Inputs)
 st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 render_manual_inputs_locked(MANUAL_INPUTS)
-
-# Bottom explanation (requested)
+# Bottom explanation (UPDATED per your instructions)
 st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-st.markdown("### How Relative Strength (RS) Works Here")
+
 st.markdown(
     """
-- **RS (1W/1M/3M/6M/1Y)** is a **percentile rank (1–99)** vs the benchmark: we compare each asset’s **relative return vs SPY** over that time window, then rank it against the other assets in the table.
-- **Manual Inputs Data** is part of our **Big Picture Proprietary Analysis** and is updated directly in the code.
+**How RS is Calculated:** RS = % change in (Symbol ÷ Benchmark), then percentile-ranked (1–99)
+
+- For each symbol, we divide its price by the benchmark’s price to create a daily ratio for the lookback period.
+- We then measure the percentage change in that ratio from the start of the period to the end.
+- This shows how much the symbol outperformed or underperformed the benchmark over that window.
+- Finally, all RS scores are ranked as a percentile (1–99) compared to all symbols shown in the dashboard.
+
+**Big Picture Market Pulse Dashboard** is part of our analysis and is updated weekly.
 """
 )
+
 
