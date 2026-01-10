@@ -1086,7 +1086,7 @@ render_table_html(df_macro_all, show_cols, height_px=900)
 
 # Stocks (LOCKED)
 st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
-st.markdown('<div class="section-title">Stocks</div>', unsafe_allow_html=True)
+st.markdown('<div class="section-title">Mega & Large Cap Stocks ($100B+)</div>', unsafe_allow_html=True)
 df_stocks = build_table(price_df, STOCKS_LOCKED, name_map)
 render_table_html(df_stocks, show_cols, height_px=900)
 
