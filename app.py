@@ -121,14 +121,6 @@ tr.group-row td.name{
 }
 .kv .k{opacity:0.82; font-weight:850;}
 .kv .v{font-weight:950;}
-.note-box{
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(0,0,0,0.35);
-  border-radius: 12px;
-  padding: 10px 12px;
-  white-space: pre-wrap;
-  line-height: 1.25;
-}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -396,7 +388,6 @@ CIEN
 AU
 """.strip()
 
-# yfinance symbol fixes
 TICKER_ALIASES = {
     "BRKA.A": "BRK-A",
     "BRKB.B": "BRK-B",
@@ -406,11 +397,6 @@ TICKER_ALIASES = {
 
 
 def parse_csv_or_lines(raw: str) -> list[str]:
-    """
-    Accepts comma-separated and/or newline separated tickers.
-    Cleans and de-dupes while preserving order.
-    Also fixes a known typo: 'CRWDMELI' -> ['CRWD','MELI']
-    """
     raw = (raw or "").upper()
     raw = raw.replace("CRWDMELI", "CRWD, MELI")
 
@@ -754,8 +740,7 @@ def render_table_html(df: pd.DataFrame, columns: list[str], height_px: int = 360
 # ============================================================
 # VERSION 9: LOCKED MANUAL INPUTS (EDIT WEEKLY IN CODE ONLY)
 # ============================================================
-# ✅ This is the ONLY place you update the manual numbers weekly.
-# Search for: "EDIT WEEKLY HERE"
+# ✅ Search for: "EDIT WEEKLY HERE"
 # ============================================================
 
 # --- EDIT WEEKLY HERE ---
@@ -794,7 +779,7 @@ MANUAL_INPUTS = {
         "% Price Above 200DMA": 68,
     },
     "Composite Model": {"Monetary Policy": 1.0, "Liquidity Flow": 2.0, "Rates & Credit": 2.0, "Tape Strength": 2.0, "Sentiment": 1.0},
-    "Hot Sectors / Industry Groups": {"Notes": "Type here..."},
+    "Hot Sectors / Industry Groups": {"Notes": ""},  # <- removed "Type here..."
     "Market Correlations": {"Correlated": "Dow, Nasdaq", "Uncorrelated": "Dollar, Bonds"},
 }
 # --- EDIT WEEKLY HERE ---
@@ -858,24 +843,54 @@ def _kv(label: str, value_html: str):
     st.markdown(f'<div class="kv"><div class="k">{label}</div><div class="v">{value_html}</div></div>', unsafe_allow_html=True)
 
 
+def _pill_for_market_type(mt: str) -> str:
+    mt = (mt or "").strip().lower()
+    if mt in ["bull quiet", "bull volatile"]:
+        return "pill pill-green"
+    if mt in ["bear quiet", "bear volatile"]:
+        return "pill pill-red"
+    if mt in ["sideways quiet", "sideways volatile"]:
+        return "pill pill-amber"
+    return "pill pill-amber"
+
+
+def _pill_for_credit(val: str) -> str:
+    v = (val or "").strip().lower()
+    if v == "aligned":
+        return "pill pill-green"
+    if v in ["divergent", "divergence"]:
+        return "pill pill-red"
+    return "pill pill-amber"
+
+
+def _pill_for_dollar(val: str) -> str:
+    v = (val or "").strip().lower()
+    if v == "downtrend":
+        return "pill pill-green"
+    if v == "uptrend":
+        return "pill pill-red"
+    if v == "sideways":
+        return "pill pill-amber"
+    return "pill pill-amber"
+
+
 def render_manual_inputs_locked(mi: dict):
-    st.markdown('<div class="card"><h3>Manual Inputs</h3><div class="hint">Locked (updated in code only)</div></div>', unsafe_allow_html=True)
+    # Title change + remove "Manual Inputs / Locked..." text
+    st.markdown('<div class="card"><h3>Big Picture Market Pulse Dashboard</h3></div>', unsafe_allow_html=True)
     st.caption(MANUAL_ASOF_LABEL)
 
-    # Layout: 3 columns for that "dashboard" feel
     c1, c2, c3 = st.columns([1.05, 1.15, 1.15])
 
-    # Column 1: Exposure + Market Type + Trend
     with c1:
-        st.markdown('<div class="card"><h3>Stock Market Exposure</h3><div class="hint">Your risk-on / risk-off band.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="card"><h3>Stock Market Exposure</h3>', unsafe_allow_html=True)
         ex = str(mi.get("Stock Market Exposure", {}).get("Exposure", "")).strip()
         pill_class = EXPOSURE_PILL.get(ex, "pill pill-amber")
         st.markdown(f'Current: <span class="{pill_class}">{ex or "—"}</span>', unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
-        st.markdown('<div class="card"><h3>Market Type</h3><div class="hint">Current regime.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="card"><h3>Market Type</h3>', unsafe_allow_html=True)
         mt = str(mi.get("Market Type", {}).get("Type", "")).strip()
-        _kv("Type", f'<span class="pill pill-amber">{mt or "—"}</span>')
+        _kv("Type", f'<span class="{_pill_for_market_type(mt)}">{mt or "—"}</span>')
         st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown('<div class="card"><h3>Trend Condition (QQQ)</h3><div class="hint">Simple yes/no filters.</div>', unsafe_allow_html=True)
@@ -885,7 +900,6 @@ def render_manual_inputs_locked(mi: dict):
             _kv(k, _yesno_badge(tc.get(k, "—")))
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # Column 2: Market Indicators + High/Lows
     with c2:
         st.markdown('<div class="card"><h3>Nasdaq Net 52-Week New High/Low</h3><div class="hint">Positive = green, negative = red.</div>', unsafe_allow_html=True)
         hl = mi.get("Nasdaq Net 52-Week New High/Low", {}) or {}
@@ -909,8 +923,13 @@ def render_manual_inputs_locked(mi: dict):
 
         _kv("VIX", f'{ind.get("VIX","—")}')
         _kv("Put/Call (PCC)", f'{ind.get("PCC","—")}')
-        _kv("Credit (IEI vs HYG)", f'<span class="pill pill-amber">{ind.get("Credit (IEI vs HYG)","—")}</span>')
-        _kv("U.S. Dollar", f'<span class="pill pill-amber">{ind.get("U.S. Dollar","—")}</span>')
+
+        credit_val = str(ind.get("Credit (IEI vs HYG)", "—"))
+        _kv("Credit (IEI vs HYG)", f'<span class="{_pill_for_credit(credit_val)}">{credit_val}</span>')
+
+        dollar_val = str(ind.get("U.S. Dollar", "—"))
+        _kv("U.S. Dollar", f'<span class="{_pill_for_dollar(dollar_val)}">{dollar_val}</span>')
+
         _kv("DXY Price", f'{ind.get("DXY Price","—")}')
         _kv("Distribution Days", f'{ind.get("Distribution Days","—")}')
 
@@ -926,7 +945,6 @@ def render_manual_inputs_locked(mi: dict):
 
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # Column 3: Macro + Breadth + Composite + Notes
     with c3:
         st.markdown('<div class="card"><h3>Macro</h3><div class="hint">High-level backdrop.</div>', unsafe_allow_html=True)
         mac = mi.get("Macro", {}) or {}
@@ -967,12 +985,15 @@ def render_manual_inputs_locked(mi: dict):
         )
         st.markdown("</div>", unsafe_allow_html=True)
 
-        st.markdown('<div class="card"><h3>Hot Sectors / Industry Groups</h3><div class="hint">Freeform notes (edit in code).</div>', unsafe_allow_html=True)
+        # Hot sectors: remove hint line + remove "bar"
+        st.markdown('<div class="card"><h3>Hot Sectors / Industry Groups</h3>', unsafe_allow_html=True)
         hs = mi.get("Hot Sectors / Industry Groups", {}) or {}
-        st.markdown(f'<div class="note-box">{hs.get("Notes","")}</div>', unsafe_allow_html=True)
+        notes = str(hs.get("Notes", "") or "").strip()
+        st.markdown(notes if notes else "_(none)_")
         st.markdown("</div>", unsafe_allow_html=True)
 
-        st.markdown('<div class="card"><h3>Market Correlations</h3><div class="hint">Freeform text (edit in code).</div>', unsafe_allow_html=True)
+        # Market correlations: remove hint line
+        st.markdown('<div class="card"><h3>Market Correlations</h3>', unsafe_allow_html=True)
         mc = mi.get("Market Correlations", {}) or {}
         _kv("Correlated", f'{mc.get("Correlated","—")}')
         _kv("Uncorrelated", f'{mc.get("Uncorrelated","—")}')
@@ -983,7 +1004,7 @@ def render_manual_inputs_locked(mi: dict):
 # UI
 # =========================
 st.title("Market Overview Dashboard")
-st.caption(f"As of: {_asof_ts()} • Auto data: Yahoo Finance • RS Benchmark: {BENCHMARK}")
+st.caption(f"As of: {_asof_ts()} • RS Benchmark: {BENCHMARK}")
 
 with st.sidebar:
     st.subheader("Controls")
@@ -1069,7 +1090,7 @@ st.markdown('<div class="section-title">Stocks</div>', unsafe_allow_html=True)
 df_stocks = build_table(price_df, STOCKS_LOCKED, name_map)
 render_table_html(df_stocks, show_cols, height_px=900)
 
-# Watch List (EDITABLE) — moved BELOW the table (not sidebar)
+# Watch List (EDITABLE)
 st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 st.markdown('<div class="section-title">Watch List</div>', unsafe_allow_html=True)
 
@@ -1100,8 +1121,17 @@ with c2:
 
 st.markdown("</div>", unsafe_allow_html=True)
 
-# =========================
-# Manual Inputs (LOCKED, pretty, last)
-# =========================
+# Big Picture Market Pulse Dashboard (Manual Inputs)
 st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
 render_manual_inputs_locked(MANUAL_INPUTS)
+
+# Bottom explanation (requested)
+st.markdown('<div class="hr"></div>', unsafe_allow_html=True)
+st.markdown("### How Relative Strength (RS) Works Here")
+st.markdown(
+    """
+- **RS (1W/1M/3M/6M/1Y)** is a **percentile rank (1–99)** vs the benchmark: we compare each asset’s **relative return vs SPY** over that time window, then rank it against the other assets in the table.
+- **Manual Inputs Data** is part of our **Big Picture Proprietary Analysis** and is updated directly in the code.
+"""
+)
+
